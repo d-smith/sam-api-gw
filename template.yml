@@ -1,0 +1,138 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: 'AWS::Serverless-2016-10-31'
+Description: >
+  Step function hello world with SAM!
+Globals:
+  Function:
+    Runtime: "nodejs8.10"
+
+Parameters:
+  Stage:
+    Type: String
+    Default: Dev
+    Description: Stage or environment designator used to discriminate the resources instantiated for a specific stack
+
+Resources:
+
+  LambdaExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: "sts:AssumeRole"
+      Path: "/"
+      Policies:
+        - PolicyName: AccessDDB
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogGroup
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource: '*'
+
+  Greeting:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: greeting.greet
+      CodeUri: src/
+      Role: !GetAtt [ LambdaExecutionRole, Arn ]
+
+
+  MyApi:
+    Type: AWS::Serverless::Api
+    Properties:
+      StageName: 
+        Ref: 'Stage'
+      EndpointConfiguration: 'REGIONAL'
+      DefinitionBody:
+
+        swagger: '2.0'
+        info:
+          version: "1"
+          title:
+            Ref: "AWS::StackName"
+        paths:
+          /greet:
+            post:
+              consumes:
+              - "application/json"
+              produces:
+              - "application/json"
+              parameters:
+              - in: body
+                name: "Input"
+                required: true
+                schema:
+                  $ref: "#/definitions/Input"
+              responses:
+                '200':
+                  description: '200 ok'
+                  schema:
+                    $ref: "#/definitions/Result"
+              x-amazon-apigateway-request-validator: "Validate body"
+              x-amazon-apigateway-integration:
+                uri:
+                  Fn::Sub: arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${Greeting.Arn}/invocations
+                responses:
+#                  '200': 
+#                    statusCode: 200
+#                    responseTemplates:
+#                      application/json: |
+#                        {
+#                         $input.path('$').body 
+#                        }
+                  default:
+                    statusCode: "200"
+                requestTemplates:
+                  application/json: |
+                    { 
+                      "body" : $input.json('$')
+                    }
+                passthroughBehavior: "never"
+                httpMethod:  "POST"
+                contentHandling: "CONVERT_TO_TEXT"
+                type: "Aws"
+        definitions:
+          Input:
+            type: object
+            required:
+            - name
+            - salutation
+            properties:
+              name:
+                type: string
+              salutation:
+                type: string
+          Result:
+            type: object
+            properties:
+              greeting:
+                type: string
+
+    
+        x-amazon-apigateway-request-validators:
+          Validate body:
+            validateRequestParameters: false
+            validateRequestBody: true
+
+
+  MyPermissions:
+    Type: AWS::Lambda::Permission
+    Properties: 
+      Action: lambda:InvokeFunction
+      Principal: apigateway.amazonaws.com
+      FunctionName: !Ref Greeting
+
+
+ 
+
+Outputs:
+  apiGatewayInvokeURL:
+    Value: !Sub "https://${MyApi}.execute-api.${AWS::Region}.amazonaws.com/${Stage}"
