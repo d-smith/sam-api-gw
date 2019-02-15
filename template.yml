@@ -81,13 +81,13 @@ Resources:
                 uri:
                   Fn::Sub: arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${Greeting.Arn}/invocations
                 responses:
-#                  '200': 
-#                    statusCode: 200
-#                    responseTemplates:
-#                      application/json: |
-#                        {
-#                         $input.path('$').body 
-#                        }
+                  '200': 
+                    statusCode: 200
+                    responseTemplates:
+                      application/json: |
+                        {
+                         $input.path('$').body
+                        }
                   default:
                     statusCode: "200"
                 requestTemplates:
