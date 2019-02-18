@@ -76,19 +76,24 @@ Resources:
                   description: '200 ok'
                   schema:
                     $ref: "#/definitions/Result"
+                '400':
+                  description: '400 not ok'
+                  schema:
+                    $ref: "/definitions/ErrorResult"
               x-amazon-apigateway-request-validator: "Validate body"
               x-amazon-apigateway-integration:
                 uri:
                   Fn::Sub: arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${Greeting.Arn}/invocations
                 responses:
-#                  "2\\d{2}": 
-#                    statusCode: 200
-#                    responseTemplates:
-#                      application/json: |
-#                       {
-#                         \"greeting\":\"$input.path('$').body.greeting\"
-#                       }
-                  'default':
+
+                  'TiredGreeting':
+                    statusCode: "400"
+                    responseTemplates:
+                      application/json: |
+                        {
+                          "error":"unoriginal greeting specification"
+                        }
+                  '.*':
                     statusCode: "200"
                     responseTemplates:
                       application/json: |
@@ -119,6 +124,11 @@ Resources:
             type: object
             properties:
               greeting:
+                type: string
+          ErrorResult:
+            type: object
+            properties:
+              error:
                 type: string
 
     
